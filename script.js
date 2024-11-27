@@ -275,11 +275,12 @@ let totalTyped = "";
 let currentCharIndex = 0;
 let errors = 0;
 let longText = generateLongText();
-let timeLeft = 6;
+let timeLeft = 60;
 let timerInterval;
 let typingStarted = false;
 
-textContainer.textContent = longText;
+// textContainer.textContent = longText; // removed because it is now being called at the bottom in the Startup()
+
 // Shuffle the words array
 
 function shuffleArray(array) {
@@ -311,22 +312,33 @@ function startTimer() {
   }
 }
 
-// End the test and display the final score
-function endTest() {
-  timerElement.textContent = `Time's up!`;
-  finalScoreElement.textContent = `Final WPM: ${calculateWPM()}`;
-  textContainer.style.display = "none";
-  tryAgainButton.style.display = "block";
-  
+// Calculate words per minute with error adjustment
+function calculateWPM() {
+  // Split the total typed text and the reference text into arrays of words
+  const typedWords = totalTyped.trim().split(/\s+/); // Words typed by the user
+  const referenceWords = longText.trim().split(/\s+/); // Words from the original text
+
+  let correctWords = 0;
+
+  // Loop through typed words and compare them to the reference text
+  for (let i = 0; i < typedWords.length; i++) {
+    if (typedWords[i] === referenceWords[i]) {
+      correctWords++; // Count correctly typed words
+    }
+  }
+
+  // Calculate elapsed time in seconds
+  const elapsedTime = 60 - timeLeft; // Using 60 seconds as the full duration
+
+  // Avoid division by zero if elapsed time is too small
+  const timeInMinutes = elapsedTime > 0 ? elapsedTime / 60 : 1 / 60;
+
+  // Calculate WPM (Words Per Minute)
+  const wpm = Math.round(correctWords / timeInMinutes);
+
+  return Math.max(wpm, 0); // Ensure WPM doesn't go below 0
 }
 
-//calculate words-per-minute with error adjustment
-function calculateWPM() {
-  const wordsTyped = totalTyped.trim().split(/\s+/).length;
-  const baseWPM = Math.round((wordsTyped / 60) * 60);
-  const adjustedWPM = Math.max(baseWPM - errors, 0);
-  return adjustedWPM;
-}
 //Handing typing over the displayed text and scrolling
 document.addEventListener("keydown", (e) => {
   startTimer();
@@ -334,7 +346,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Backspace") {
     if (totalTyped.length > 0) {
       currentCharIndex = Math.max(currentCharIndex - 1, 0);
-      totalTyped = totalTyped.slice(0 - 1);
+      totalTyped = totalTyped.slice(0, -1);
     }
   } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
     totalTyped += e.key;
@@ -355,6 +367,7 @@ document.addEventListener("keydown", (e) => {
       } else {
         span.classList.add("error");
         errors++;
+        console.log(errors);
       }
     }
 
@@ -368,3 +381,59 @@ document.addEventListener("keydown", (e) => {
     textContainer.scrollLeft = scrollAmount;
   }
 });
+
+// End the test and display the final score
+function endTest() {
+  clearInterval(timerInterval);
+
+  const finalWPM = calculateWPM(); // Calculate the WPM.
+
+  finalScoreElement.textContent = `Final WPM: ${finalWPM}`;
+
+  textContainer.style.display = "none"; // Hide the text container.
+  tryAgainButton.style.display = "block"; // Show retry button.
+}
+
+//Reset the test
+
+function resetTest() {
+  clearInterval(timerInterval);
+  timeLeft = 60;
+  timerElement.textContent = `Time left: ${timeLeft}s `;
+  finalScoreElement.textContent = "";
+  textContainer.style.display = "block";
+  tryAgainButton.style.display = "none";
+  totalTyped = "";
+  typingStarted = false;
+  currentCharIndex = 0;
+  errors = 0;
+  textContainer.scrollLeft = 0;
+  longText = generateLongText();
+}
+// Initialize the test
+
+function init() {
+  if (isMobileDevice()) {
+    showMobileMessage();
+  } else {
+    textContainer.innerText = longText;
+    timerElement.textContent = `Time Left: ${timeLeft}s `;
+  }
+}
+
+// Try again button listener
+tryAgainButton.addEventListener("click", resetTest);
+
+//Detect mobile usage
+function isMobileDevice() {
+  return /Mobi|Android/i.test(navigator.userAgent) || window.innerWidth < 800;
+}
+
+//Show message for mobile users
+function showMobileMessage() {
+  textContainer.textContent =
+    "This typing test is designed for desktop use only";
+}
+
+//Startup
+init();
